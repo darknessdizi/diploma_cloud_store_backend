@@ -1,0 +1,11 @@
+[
+  {
+    "model": "app_cloud_storage.users",
+    "pk": 1,
+    "fields": {
+      "user_login": "Admin",
+      "user_password": "121314",
+      "status_admin": true
+    }
+  }
+]
