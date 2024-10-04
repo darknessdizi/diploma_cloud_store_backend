@@ -16,10 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from app_cloud_storage.views import registrationUser
+from app_cloud_storage.views import loginUser, registrationUser
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('login/', include('app_cloud_storage.urls')),
-    path('registration/', registrationUser, name='registration')
+    path('registration/', registrationUser, name='registration'),
+    path('login/', loginUser, name='login'),
 ]
