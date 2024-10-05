@@ -17,7 +17,7 @@ class Users(models.Model):
     user_full_name = models.CharField(max_length=100)
     user_email = models.CharField(max_length=250)
     user_password = models.CharField(max_length=250)
-    user_avatar = models.ImageField(upload_to=user_directory_path, default='')
+    user_avatar = models.ImageField(upload_to=user_directory_path, default='avatar-boy.svg')
     user_status_admin = models.BooleanField(default=False)
     user_created = models.DateTimeField(auto_now_add=True)
     user_last_visit = models.DateTimeField(auto_now=True)
