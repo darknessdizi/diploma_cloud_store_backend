@@ -86,3 +86,7 @@ class File(APIView):
         allFiles = Files.objects.filter(user_id=id)
         ser = FilesSerializer(allFiles, many=True)
         return Response(ser.data, status=200)
+
+    def delete(self, request, id):
+        Files.objects.filter(pk=id).delete()
+        return Response(status=204)

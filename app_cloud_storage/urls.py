@@ -8,5 +8,5 @@ urlpatterns = [
     path('registration/', registrationUser, name='registration'),
     path('login/', loginUser, name='login'),
     path('file/', File.as_view(), name='file'),
-    path('file/<int:id>', File.as_view(), name='file'),
+    path('file/<int:id>/', File.as_view(), name='file'),
 ]
