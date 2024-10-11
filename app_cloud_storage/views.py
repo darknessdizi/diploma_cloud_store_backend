@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.decorators import api_view
@@ -23,7 +23,7 @@ def get_csrf(request):
 
 @api_view(['POST'])
 @app_enter
-def registrationUser(request):
+def registration_user(request):
     # регистрация пользователя
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
@@ -44,7 +44,7 @@ def registrationUser(request):
 
 @api_view(['POST'])
 @app_enter
-def loginUser(request):
+def login_user(request):
     # вход пользователя в систему
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
@@ -55,6 +55,14 @@ def loginUser(request):
         return JsonResponse(data, status=200)    
     else: 
         return HttpResponse(status=205)
+
+@api_view(['GET'])
+@app_enter
+def get_files(request, id):
+    # получение всех файлов пользователя
+    allFiles = Files.objects.filter(user_id=id)
+    ser = FilesSerializer(allFiles, many=True)
+    return Response(ser.data, status=200)   
 
 class File(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -83,10 +91,12 @@ class File(APIView):
         return Response(data={'files': data_list}, status=201)
 
     def get(self, request, id):
-        allFiles = Files.objects.filter(user_id=id)
-        ser = FilesSerializer(allFiles, many=True)
-        return Response(ser.data, status=200)
+        # отправка файла для сохранения на устройство клиента
+        print('отправка файла', id)
+        queryset = Files.objects.get(pk=id)
+        return FileResponse(queryset.file, as_attachment=True) 
 
     def delete(self, request, id):
+        # удаление файла из хранилища
         Files.objects.filter(pk=id).delete()
         return Response(status=204)
