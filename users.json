@@ -1,11 +1,16 @@
 [
   {
     "model": "app_cloud_storage.users",
-    "pk": 1,
+    "pk": 3,
     "fields": {
-      "user_login": "Admin",
-      "user_password": "121314",
-      "status_admin": true
+      "login": "admin",
+      "password": "121314ZX+",
+      "status_admin": true,
+      "sex": "man",
+      "avatar": "avatar.svg",
+      "email": "admin@boss.ru",
+      "created": "2024-10-12 12:54:55.375 +0700",
+      "last_visit": "2024-10-12 12:54:55.375 +0700"
     }
   }
 ]

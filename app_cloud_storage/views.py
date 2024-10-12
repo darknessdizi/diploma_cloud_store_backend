@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
@@ -28,14 +29,22 @@ def registration_user(request):
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
     queryset = Users.objects.filter(login=json_body['login'])
-    print('****', queryset, json_body, request.headers)
+    # print('****', queryset, json_body, request.headers)
     if queryset.exists():
         return HttpResponse(status=205)
+
+    if json_body['sex'] == 'man':
+        avatar_name = 'avatar-man.svg'
+    else:
+        avatar_name = 'avatar-woman.svg'
+
     user = Users.objects.create(
         login = json_body['login'],
         full_name = json_body['fullName'],
         email = json_body['email'],
         password = json_body['password'],
+        sex = json_body['sex'],
+        avatar = avatar_name,
     )
     print('запрос1', user.to_json())
     data = user.to_json()
@@ -62,6 +71,14 @@ def get_files(request, id):
     # получение всех файлов пользователя
     allFiles = Files.objects.filter(user_id=id)
     ser = FilesSerializer(allFiles, many=True)
+    return Response(ser.data, status=200)
+
+@api_view(['GET'])
+@app_enter
+def file_data(request, file_id):
+    # получение данных о файле
+    file = Files.objects.get(pk=file_id)
+    ser = FilesSerializer(file)
     return Response(ser.data, status=200)   
 
 class File(APIView):
@@ -94,6 +111,8 @@ class File(APIView):
         # отправка файла для сохранения на устройство клиента
         print('отправка файла', id)
         queryset = Files.objects.get(pk=id)
+        queryset.last_download = timezone.now()
+        queryset.save(update_fields=['last_download'])
         return FileResponse(queryset.file, as_attachment=True) 
 
     def delete(self, request, id):

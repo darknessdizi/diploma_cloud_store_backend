@@ -17,7 +17,8 @@ class Users(models.Model):
     full_name = models.CharField(max_length=100)
     email = models.CharField(max_length=250)
     password = models.CharField(max_length=250)
-    avatar = models.ImageField(upload_to=user_directory_path, default='avatar-boy.svg')
+    sex = models.CharField(max_length=5)
+    avatar = models.ImageField(upload_to=user_directory_path, default='')
     status_admin = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     last_visit = models.DateTimeField(auto_now=True)
@@ -36,10 +37,11 @@ class Users(models.Model):
             'login': self.login,
             'full_name': self.full_name,
             'email': self.email,
-            'avatar': str(self.avatar),
+            'avatar': self.avatar,
             'status_admin': self.status_admin,
             'created': self.created,
             'last_visit': self.last_visit,
+            'sex': self.sex,
         }
 
 class Files(models.Model):
@@ -56,8 +58,8 @@ class Files(models.Model):
         verbose_name = 'Файл пользователя'
         verbose_name_plural = 'Файлы пользователей'
 
-# class Permission(models.Model):
-#     id = models.IntegerField(primary_key=True)
-#     users_id = models.ForeignKey(Users, models.DO_NOTHING, on_delete=models.CASCADE)
-#     files_id = models.ForeignKey(Files, models.DO_NOTHING, on_delete=models.CASCADE)
+class UserSession(models.Model):
+    session_token = models.CharField(max_length=100, default='')
+    created = models.DateTimeField(auto_now=True)
+    user_id = models.ForeignKey(Users, on_delete=models.CASCADE)
 
