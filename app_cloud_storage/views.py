@@ -6,11 +6,14 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
+from cryptography.fernet import Fernet
+from .crypto import encrypt, decrypt
+import secrets
 
 from app_cloud_storage.const import URL_SERVER
 from app_cloud_storage.serializers import FilesSerializer
 from .decorators import app_enter
-from .models import Files, Users
+from .models import Files, UserSession, Users
 import json
 
 # Create your views here.
@@ -38,17 +41,26 @@ def registration_user(request):
     else:
         avatar_name = 'avatar-woman.svg'
 
+    key = Fernet.generate_key().decode()
     user = Users.objects.create(
         login = json_body['login'],
         full_name = json_body['fullName'],
         email = json_body['email'],
-        password = json_body['password'],
+        password = encrypt(json_body['password'], key),
         sex = json_body['sex'],
         avatar = avatar_name,
+        key = key,
     )
+
+    session = UserSession.objects.create(
+        user_id = user,
+        session_token = secrets.token_hex(16),
+    )
+
     print('запрос1', user.to_json())
     data = user.to_json()
     data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
+    data['session_token'] = session.session_token
     return JsonResponse(data, status=201)
 
 @api_view(['POST'])

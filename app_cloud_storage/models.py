@@ -22,6 +22,7 @@ class Users(models.Model):
     status_admin = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     last_visit = models.DateTimeField(auto_now=True)
+    key = models.CharField(max_length=250)
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -41,7 +42,6 @@ class Users(models.Model):
             'status_admin': self.status_admin,
             'created': self.created,
             'last_visit': self.last_visit,
-            'sex': self.sex,
         }
 
 class Files(models.Model):

@@ -1,16 +1,26 @@
 [
   {
     "model": "app_cloud_storage.users",
-    "pk": 3,
+    "pk": 1,
     "fields": {
       "login": "admin",
-      "password": "121314ZX+",
+      "password": "gAAAAABnCrcuqfFGxUtbsHUPHx0vRJLS4XlAXfX6MKt1UDZYyUPl7puAxMjRWvxT54VBT1NrzNbNXKaYKnxPrUpXFtHMrex2-g==", // пароль 12QWER+
       "status_admin": true,
       "sex": "man",
       "avatar": "avatar.svg",
       "email": "admin@boss.ru",
       "created": "2024-10-12 12:54:55.375 +0700",
-      "last_visit": "2024-10-12 12:54:55.375 +0700"
+      "last_visit": "2024-10-12 12:54:55.375 +0700",
+      "key": "KkVb5iNMW9fnZSEdJrDcrM4WW3qiO9VPxJLJzgn7Dv8="
+    }
+  },
+  {
+    "model": "app_cloud_storage.UserSession",
+    "pk": 1,
+    "fields": {
+      "session_token": "",
+      "created": "2024-10-12 12:54:55.375 +0700",
+      "user_id": 1
     }
   }
 ]
