@@ -57,9 +57,17 @@ class Files(models.Model):
     class Meta:
         verbose_name = 'Файл пользователя'
         verbose_name_plural = 'Файлы пользователей'
+        ordering = ["created"]
 
 class UserSession(models.Model):
     session_token = models.CharField(max_length=100, default='')
     created = models.DateTimeField(auto_now=True)
     user_id = models.ForeignKey(Users, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = 'Сессия пользователя'
+        verbose_name_plural = 'Сессии пользователей'
+
+    def __str__(self):
+        return f'Сессия для {self.user_id.login}'
 

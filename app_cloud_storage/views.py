@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+# from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
@@ -12,18 +12,20 @@ import secrets
 
 from app_cloud_storage.const import URL_SERVER
 from app_cloud_storage.serializers import FilesSerializer
-from .decorators import app_enter
+from .decorators import app_enter, check_session
 from .models import Files, UserSession, Users
 import json
+from django.core.exceptions import ObjectDoesNotExist
 
 # Create your views here.
 
-@api_view(['GET'])
-@ensure_csrf_cookie
-@csrf_exempt
-def get_csrf(request):
-    print('получениие токена !!!!!!!!!!!!!!!')
-    return HttpResponse()
+# @api_view(['GET'])
+# @ensure_csrf_cookie
+# @csrf_exempt
+# def get_csrf(request):
+    # print('получениие токена !!!!!!!!!!!!!!!')
+    # return HttpResponse()
+
 
 @api_view(['POST'])
 @app_enter
@@ -32,7 +34,6 @@ def registration_user(request):
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
     queryset = Users.objects.filter(login=json_body['login'])
-    # print('****', queryset, json_body, request.headers)
     if queryset.exists():
         return HttpResponse(status=205)
 
@@ -57,10 +58,9 @@ def registration_user(request):
         session_token = secrets.token_hex(16),
     )
 
-    print('запрос1', user.to_json())
     data = user.to_json()
     data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
-    data['session_token'] = session.session_token
+    data['token'] = session.session_token
     return JsonResponse(data, status=201)
 
 @api_view(['POST'])
@@ -69,21 +69,56 @@ def login_user(request):
     # вход пользователя в систему
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
-    queryset = Users.objects.filter(login=json_body['login'], password=json_body['password'])
+    queryset = Users.objects.filter(login=json_body['login'])
     if queryset.exists():
-        data = queryset[0].to_json()
-        data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
-        return JsonResponse(data, status=200)    
+        user = queryset[0]
+        if decrypt(user.password, user.key) == json_body['password']:
+            data = queryset[0].to_json()
+            data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
+            try:
+                session = UserSession.objects.get(user_id=user.id)
+                session.session_token = secrets.token_hex(16)
+                session.save()
+                data['token'] = session.session_token
+                return JsonResponse(data, status=200)
+            except ObjectDoesNotExist:
+                return JsonResponse({'error': 'Нет данных по сессии. Обратитесь к администратору.'}, status=404)
+        else:
+            return JsonResponse({'error': 'Вы ввели неверное имя пользователя или пароль. Попробуйте повторить ввод или нажмите на кнопку регистрация.'}, status=404)
     else: 
-        return HttpResponse(status=205)
+        return JsonResponse({'error': 'Вы ввели неверное имя пользователя или пароль. Попробуйте повторить ввод или нажмите на кнопку регистрация.'}, status=404)
 
 @api_view(['GET'])
-@app_enter
-def get_files(request, id):
+@check_session
+def logout_user(request, data):
+    # выход пользователя из системы
+    # session = UserSession.objects.get(session_token=request.headers['Authorization'])
+    print('session+++', request, data['session'])
+    data['session'].session_token = ''
+    data['session'].save()
+    return JsonResponse({'status': 'Выполнено'}, status=200)
+
+@api_view(['GET'])
+@check_session
+def get_files(request, id, data):
     # получение всех файлов пользователя
     allFiles = Files.objects.filter(user_id=id)
     ser = FilesSerializer(allFiles, many=True)
     return Response(ser.data, status=200)
+
+@api_view(['GET'])
+@check_session
+def get_data(request, data):
+    # получение данных пользователя после перезапуска (по токену)
+    try:
+        user = Users.objects.get(pk=data['session'].user_id.id)
+        result = user.to_json()
+        result['avatar'] = f"{URL_SERVER}/media/{result['avatar']}"
+        result['token'] = data['session'].session_token
+        return Response(result, status=200)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Нет данных на пользователя'}, status=404)
+    
 
 @api_view(['GET'])
 @app_enter
