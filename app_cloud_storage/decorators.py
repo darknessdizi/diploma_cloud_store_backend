@@ -1,10 +1,7 @@
 from django.http import JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
-
 from app_cloud_storage.models import UserSession
 
-class CustomException(Exception):
-    pass
 
 # Декоратор для входа в систему
 def app_enter(func):

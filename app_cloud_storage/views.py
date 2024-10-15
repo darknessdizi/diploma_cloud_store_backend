@@ -1,5 +1,4 @@
 from django.utils import timezone
-# from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
 # from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
@@ -185,3 +184,19 @@ class File(APIView):
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return remove(request, id)
+
+    def patch(self, request, id):
+        # редактирование файла в хранилище
+        @check_session
+        def updata(req, id, data):
+            try:
+                del data
+                queryset = Files.objects.get(pk=id)
+                queryset.title = dict(req.data)['title'][0]
+                queryset.comment = dict(req.data)['comment'][0]
+                queryset.save(update_fields=['title', 'comment',])
+                ser = FilesSerializer(queryset)
+                return Response(ser.data, status=200)
+            except ObjectDoesNotExist:
+                return JsonResponse({'error': 'Файл не найден'}, status=404)
+        return updata(request, id)
