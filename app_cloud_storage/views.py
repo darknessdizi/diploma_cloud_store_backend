@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.shortcuts import render
+# from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
 # from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
@@ -90,25 +90,23 @@ def login_user(request):
 
 @api_view(['GET'])
 @check_session
-def logout_user(request, data):
+def logout_user(_request, data):
     # выход пользователя из системы
-    # session = UserSession.objects.get(session_token=request.headers['Authorization'])
-    print('session+++', request, data['session'])
     data['session'].session_token = ''
     data['session'].save()
     return JsonResponse({'status': 'Выполнено'}, status=200)
 
 @api_view(['GET'])
 @check_session
-def get_files(request, id, data):
+def get_files(_request, data):
     # получение всех файлов пользователя
-    allFiles = Files.objects.filter(user_id=id)
+    allFiles = Files.objects.filter(user_id=data['session'].id)
     ser = FilesSerializer(allFiles, many=True)
     return Response(ser.data, status=200)
 
 @api_view(['GET'])
 @check_session
-def get_data(request, data):
+def get_data(_request, data):
     # получение данных пользователя после перезапуска (по токену)
     try:
         user = Users.objects.get(pk=data['session'].user_id.id)
@@ -121,12 +119,16 @@ def get_data(request, data):
     
 
 @api_view(['GET'])
-@app_enter
-def file_data(request, file_id):
-    # получение данных о файле
-    file = Files.objects.get(pk=file_id)
-    ser = FilesSerializer(file)
-    return Response(ser.data, status=200)   
+@check_session
+def file_data(_request, file_id, data):
+    # получение данных о файле (обновление информации о файле у клиента)
+    try:
+        del data
+        file = Files.objects.get(pk=file_id)
+        ser = FilesSerializer(file)
+        return Response(ser.data, status=200)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Файл не найден'}, status=404)
 
 class File(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -134,35 +136,52 @@ class File(APIView):
 
     def post(self, request):
         # загрузка файлов на сервер (одиночное или групповое)
-        data_list = []
-        for i in range(len(dict(request.data)['file'])):
-            obj = {}
-            for key, items_list in dict(request.data).items():
-                obj[key] = items_list[i]
+        @check_session
+        def download(req, data):
+            del data
+            data_list = []
+            for i in range(len(dict(req.data)['file'])):
+                obj = {}
+                for key, items_list in dict(req.data).items():
+                    obj[key] = items_list[i]
 
-            serializer = self.serializer_class(data=obj)
-            if serializer.is_valid():
-                serializer.save()
-                data_list.append({
-                    'id': serializer.data['id'],
-                    'title': serializer.data['title'],
-                    'comment': serializer.data['comment'],
-                    'size': serializer.data['size'],
-                    'created': serializer.data['created'],
-                    'last_download': serializer.data['last_download'],
-                })
+                serializer = self.serializer_class(data=obj)
+                if serializer.is_valid():
+                    serializer.save()
+                    data_list.append({
+                        'id': serializer.data['id'],
+                        'title': serializer.data['title'],
+                        'comment': serializer.data['comment'],
+                        'size': serializer.data['size'],
+                        'created': serializer.data['created'],
+                        'last_download': serializer.data['last_download'],
+                    })
 
-        return Response(data={'files': data_list}, status=201)
+            return JsonResponse({'files': data_list}, status=201)
+        return download(request)
 
     def get(self, request, id):
         # отправка файла для сохранения на устройство клиента
-        print('отправка файла', id)
-        queryset = Files.objects.get(pk=id)
-        queryset.last_download = timezone.now()
-        queryset.save(update_fields=['last_download'])
-        return FileResponse(queryset.file, as_attachment=True) 
+        @check_session
+        def upload(_req, id, data):
+            try:
+                del data
+                queryset = Files.objects.get(pk=id)
+                queryset.last_download = timezone.now()
+                queryset.save(update_fields=['last_download'])
+                return FileResponse(queryset.file, as_attachment=True)
+            except ObjectDoesNotExist:
+                return JsonResponse({'error': 'Файл не найден'}, status=404)
+        return upload(request, id)
 
     def delete(self, request, id):
         # удаление файла из хранилища
-        Files.objects.filter(pk=id).delete()
-        return Response(status=204)
+        @check_session
+        def remove(_req, id, data):
+            try:
+                del data
+                Files.objects.get(pk=id).delete()
+                return Response(status=204)
+            except ObjectDoesNotExist:
+                return JsonResponse({'error': 'Файл не найден'}, status=404)
+        return remove(request, id)
