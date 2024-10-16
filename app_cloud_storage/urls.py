@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import File, get_files, login_user, registration_user, file_data, get_data, logout_user
+from .views import File, get_files, login_user, registration_user, file_data, get_data, logout_user, get_link
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -13,4 +13,5 @@ urlpatterns = [
     path('filedata/<int:file_id>/', file_data, name='filedata'),
     path('file/', File.as_view(), name='file'),
     path('file/<int:id>/', File.as_view(), name='newFile'),
+    path('getlink/<int:id>/', get_link, name='getLink'),
 ]

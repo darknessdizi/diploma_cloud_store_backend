@@ -1,3 +1,4 @@
+import os
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse, FileResponse
 from rest_framework.response import Response
@@ -15,6 +16,9 @@ from .decorators import app_enter, check_session
 from .models import Files, UserSession, Users
 import json
 from django.core.exceptions import ObjectDoesNotExist
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Create your views here.
 
@@ -128,6 +132,26 @@ def file_data(_request, file_id, data):
         return Response(ser.data, status=200)
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Файл не найден'}, status=404)
+
+@api_view(['GET'])
+@check_session
+def get_link(request, id, data):
+    # формирование и отправка ссылки для скачивания файла сторонним пользователем
+    try:
+        print('id', id)
+        title = Files.objects.get(pk=id).title
+        print('title', title)
+    except (Exception, ) as error:
+        return JsonResponse({'error': f'Ошибка что-то: {error}'}, status=404)
+
+    url = f"{data['session'].id}/{title}"
+    print('url', url)
+    print(os.environ)
+    key = os.getenv('URL_KEY')
+    # key = '9bDm1ttCwxFtmUaHKrUVULpcN6seSkosCOdu8YFM8wk='
+    print('key', key) 
+    encrypt_url = encrypt(url, key)
+    return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
 
 class File(APIView):
     parser_classes = [MultiPartParser, FormParser]
