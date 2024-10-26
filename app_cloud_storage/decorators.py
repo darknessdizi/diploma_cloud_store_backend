@@ -28,3 +28,17 @@ def check_session(func):
         except (Exception, ) as error:
             return JsonResponse({'error': f'Ошибка сервера: {error}'}, status=500)
     return wrapped
+
+# Декоратор для проверки статуса администратора
+def check_status_admin(func):
+    def wrapped(*args, **kwargs):
+        user = kwargs['data']['session'].user_id
+        try:
+            if user.status_admin == True:
+                response = func(*args, **kwargs)
+                return response
+            else:
+                raise ObjectDoesNotExist
+        except ObjectDoesNotExist:
+            return JsonResponse({'error': 'Нет доступа к информации'}, status=403)
+    return wrapped

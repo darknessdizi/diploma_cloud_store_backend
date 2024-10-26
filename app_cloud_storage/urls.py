@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import File, get_files, login_user, registration_user, file_data, get_data, logout_user, get_link
+from .views import File, get_files, login_user, registration_user, file_data, get_data, logout_user, get_link, download_file, get_users
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -8,10 +8,12 @@ urlpatterns = [
     path('registration/', registration_user, name='registration'),
     path('login/', login_user, name='login'),
     path('logout/', logout_user, name='logout'),
-    path('getfiles/', get_files, name='allFiles'),
+    path('get-files/', get_files, name='all_files'),
     path('recovery-session/', get_data, name='recovery'),
     path('filedata/<int:file_id>/', file_data, name='filedata'),
     path('file/', File.as_view(), name='file'),
     path('file/<int:id>/', File.as_view(), name='newFile'),
-    path('getlink/<int:id>/', get_link, name='getLink'),
+    path('getlink/<int:id>/', get_link, name='get_link'),
+    path('download/<str:path>/', download_file, name='download'),
+    path('get-users/', get_users, name='all_users'),
 ]

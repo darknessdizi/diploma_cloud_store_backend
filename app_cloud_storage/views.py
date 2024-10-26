@@ -11,8 +11,8 @@ from .crypto import encrypt, decrypt
 import secrets
 
 from app_cloud_storage.const import URL_SERVER
-from app_cloud_storage.serializers import FilesSerializer
-from .decorators import app_enter, check_session
+from app_cloud_storage.serializers import FilesSerializer, UsersSerializer
+from .decorators import app_enter, check_session, check_status_admin
 from .models import Files, UserSession, Users
 import json
 from django.core.exceptions import ObjectDoesNotExist
@@ -83,6 +83,8 @@ def login_user(request):
                 session.session_token = secrets.token_hex(16)
                 session.save()
                 data['token'] = session.session_token
+                user.last_visit = timezone.now()
+                user.save(update_fields=['last_visit'])
                 return JsonResponse(data, status=200)
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Нет данных по сессии. Обратитесь к администратору.'}, status=404)
@@ -135,23 +137,42 @@ def file_data(_request, file_id, data):
 
 @api_view(['GET'])
 @check_session
-def get_link(request, id, data):
+def get_link(_request, id, data):
     # формирование и отправка ссылки для скачивания файла сторонним пользователем
     try:
-        print('id', id)
         title = Files.objects.get(pk=id).title
-        print('title', title)
-    except (Exception, ) as error:
-        return JsonResponse({'error': f'Ошибка что-то: {error}'}, status=404)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Файл не найден'}, status=404)
 
     url = f"{data['session'].id}/{title}"
-    print('url', url)
-    print(os.environ)
     key = os.getenv('URL_KEY')
-    # key = '9bDm1ttCwxFtmUaHKrUVULpcN6seSkosCOdu8YFM8wk='
-    print('key', key) 
     encrypt_url = encrypt(url, key)
     return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
+
+@api_view(['GET'])
+def download_file(_request, path):
+    # скачивание файла сторонним пользователем
+    try:
+        key = os.getenv('URL_KEY')
+        try:
+            params = decrypt(path, key).split('/')
+            if len(params) != 2:
+                raise ObjectDoesNotExist
+        except (Exception,) as err:
+            raise ObjectDoesNotExist
+
+        params = decrypt(path, key).split('/')
+        file = Files.objects.get(user_id=params[0], title=params[1])
+        file.last_download = timezone.now()
+        file.save(update_fields=['last_download'])
+        response = FileResponse(file.file, as_attachment=True, filename=params[1])
+        response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        return response
+
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Неверный url'}, status=404)
+    except (Exception, ) as error:
+        return JsonResponse({'error': f'Ошибка сервера: {error}'}, status=500)
 
 class File(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -224,3 +245,12 @@ class File(APIView):
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return updata(request, id)
+
+@api_view(['GET'])
+@check_session
+@check_status_admin
+def get_users(_request, data):
+    # получение списка пользователей администратором
+    allUsers = Users.objects.all()
+    ser = UsersSerializer(allUsers, many=True)
+    return Response(ser.data, status=200)
