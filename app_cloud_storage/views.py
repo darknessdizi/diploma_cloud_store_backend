@@ -251,6 +251,22 @@ class File(APIView):
 @check_status_admin
 def get_users(_request, data):
     # получение списка пользователей администратором
-    allUsers = Users.objects.all()
+    allUsers = Users.objects.exclude(id=data['session'].id)
     ser = UsersSerializer(allUsers, many=True)
     return Response(ser.data, status=200)
+
+@api_view(['PATCH'])
+@check_session
+@check_status_admin
+def change_status(request, data):
+    # изменение статуса пользователя админстратором
+    body_unicode = request.body.decode('utf-8')
+    json_body = json.loads(body_unicode)
+    print('+++', json_body, data)
+    try:
+        user = Users.objects.get(id=json_body['id'])
+        user.status_admin = json_body['status']
+        user.save(update_fields=['status_admin'])
+        return JsonResponse({'status': 'Выполнено'}, status=200)
+    except ObjectDoesNotExist:
+        return JsonResponse({'error': 'Пользователь не найден'}, status=404)
