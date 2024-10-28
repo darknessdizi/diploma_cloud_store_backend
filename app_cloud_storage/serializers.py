@@ -4,7 +4,7 @@ from .models import Users, Files, UserSession
 class UsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['id', 'full_name', 'avatar', 'email', 'created', 'last_visit', 'status_admin']
+        fields = ['id', 'login', 'full_name', 'email', 'created', 'last_visit', 'status_admin']
 
 class FilesSerializer(serializers.ModelSerializer):
     class Meta:
