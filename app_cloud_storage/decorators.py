@@ -40,5 +40,5 @@ def check_status_admin(func):
             else:
                 raise ObjectDoesNotExist
         except ObjectDoesNotExist:
-            return JsonResponse({'error': 'Нет доступа к информации'}, status=403)
+            return JsonResponse({'error': 'Нет доступа к указанному ресурсу'}, status=403)
     return wrapped

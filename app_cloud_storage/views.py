@@ -95,7 +95,7 @@ def login_user(request):
 
 @api_view(['GET'])
 @check_session
-def logout_user(_request, data):
+def logout_user(_, data):
     # выход пользователя из системы
     data['session'].session_token = ''
     data['session'].save()
@@ -103,55 +103,65 @@ def logout_user(_request, data):
 
 @api_view(['GET'])
 @check_session
-def get_files(_request, data):
+def get_files(_, user_id, data):
     # получение всех файлов пользователя
-    allFiles = Files.objects.filter(user_id=data['session'].id)
+    print('получение файлов', data['session'].id, user_id)
+    if (data['session'].user_id.id == user_id):
+        allFiles = Files.objects.filter(user_id=data['session'].id)
+    else:
+        statusAdmin = data['session'].user_id.status_admin
+        if statusAdmin:
+            allFiles = Files.objects.filter(user_id=user_id)
+        else:
+            return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     ser = FilesSerializer(allFiles, many=True)
     return Response(ser.data, status=200)
 
 @api_view(['GET'])
 @check_session
-def get_data(_request, data):
+def recovery_session(_, data):
     # получение данных пользователя после перезапуска (по токену)
-    try:
-        user = Users.objects.get(pk=data['session'].user_id.id)
-        result = user.to_json()
-        result['avatar'] = f"{URL_SERVER}/media/{result['avatar']}"
-        result['token'] = data['session'].session_token
-        return Response(result, status=200)
-    except ObjectDoesNotExist:
-        return JsonResponse({'error': 'Нет данных на пользователя'}, status=404)
+    result = data['session'].user_id.to_json()
+    result['avatar'] = f"{URL_SERVER}/media/{result['avatar']}"
+    result['token'] = data['session'].session_token
+    return Response(result, status=200)
     
-
 @api_view(['GET'])
 @check_session
-def file_data(_request, file_id, data):
-    # получение данных о файле (обновление информации о файле у клиента)
+def file_data(_, file_id, data):
+    # получение данных о файле (обновление информации о файле после загрузки)
     try:
-        del data
         file = Files.objects.get(pk=file_id)
         ser = FilesSerializer(file)
-        return Response(ser.data, status=200)
+        if data['session'].user_id == file.user_id:
+            return Response(ser.data, status=200)
+        elif data['session'].user_id.status_admin:
+            return Response(ser.data, status=200)
+        else:
+            return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Файл не найден'}, status=404)
 
 @api_view(['GET'])
 @check_session
-def get_link(_request, id, data):
+def get_link(_, id, data):
     # формирование и отправка ссылки для скачивания файла сторонним пользователем
     try:
-        title = Files.objects.get(pk=id).title
+        file = Files.objects.get(pk=id)
+        statusAdmin = data['session'].user_id.status_admin
+        if (data['session'].user_id != file.user_id) and (not statusAdmin):
+            return JsonResponse({'error': 'Отказано в доступе'}, status=403) 
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Файл не найден'}, status=404)
 
-    url = f"{data['session'].id}/{title}"
+    url = f"{data['session'].id}/{file.title}"
     key = os.getenv('URL_KEY')
     encrypt_url = encrypt(url, key)
     return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
 
 @api_view(['GET'])
-def download_file(_request, path):
-    # скачивание файла сторонним пользователем
+def download_file(_, path):
+    # скачивание файла сторонним пользователем по ссылке
     try:
         key = os.getenv('URL_KEY')
         try:
@@ -182,11 +192,12 @@ class File(APIView):
         # загрузка файлов на сервер (одиночное или групповое)
         @check_session
         def download(req, data):
-            del data
             data_list = []
             for i in range(len(dict(req.data)['file'])):
                 obj = {}
                 for key, items_list in dict(req.data).items():
+                    if ((key == 'user_id') and (int(items_list[i]) != data['session'].user_id.id)):
+                        return JsonResponse({'error': 'Неразрешенное действие'}, status=403)
                     obj[key] = items_list[i]
 
                 serializer = self.serializer_class(data=obj)
@@ -199,21 +210,24 @@ class File(APIView):
                         'size': serializer.data['size'],
                         'created': serializer.data['created'],
                         'last_download': serializer.data['last_download'],
+                        'user_id': serializer.data['user_id'],
                     })
-
             return JsonResponse({'files': data_list}, status=201)
         return download(request)
 
     def get(self, request, id):
         # отправка файла для сохранения на устройство клиента
         @check_session
-        def upload(_req, id, data):
+        def upload(_, id, data):
             try:
-                del data
                 queryset = Files.objects.get(pk=id)
-                queryset.last_download = timezone.now()
-                queryset.save(update_fields=['last_download'])
-                return FileResponse(queryset.file, as_attachment=True)
+                statusAdmin = data['session'].user_id.status_admin
+                if ((data['session'].user_id == queryset.user_id) or (statusAdmin)):
+                    queryset.last_download = timezone.now()
+                    queryset.save(update_fields=['last_download'])
+                    return FileResponse(queryset.file, as_attachment=True)
+                else:
+                    return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return upload(request, id)
@@ -221,11 +235,15 @@ class File(APIView):
     def delete(self, request, id):
         # удаление файла из хранилища
         @check_session
-        def remove(_req, id, data):
+        def remove(_, id, data):
             try:
-                del data
-                Files.objects.get(pk=id).delete()
-                return Response(status=204)
+                file = Files.objects.get(pk=id)
+                statusAdmin = data['session'].user_id.status_admin
+                if ((data['session'].user_id == file.user_id) or (statusAdmin)):
+                    file.delete()
+                    return Response(status=204)
+                else:
+                    return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return remove(request, id)
@@ -235,21 +253,24 @@ class File(APIView):
         @check_session
         def updata(req, id, data):
             try:
-                del data
-                queryset = Files.objects.get(pk=id)
-                queryset.title = dict(req.data)['title'][0]
-                queryset.comment = dict(req.data)['comment'][0]
-                queryset.save(update_fields=['title', 'comment',])
-                ser = FilesSerializer(queryset)
-                return Response(ser.data, status=200)
+                file = Files.objects.get(pk=id)
+                statusAdmin = data['session'].user_id.status_admin
+                if ((data['session'].user_id == file.user_id) or (statusAdmin)):
+                    file.title = dict(req.data)['title'][0]
+                    file.comment = dict(req.data)['comment'][0]
+                    file.save(update_fields=['title', 'comment',])
+                    ser = FilesSerializer(file)
+                    return Response(ser.data, status=200)
+                else:
+                    return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
-                return JsonResponse({'error': 'Файл не найден'}, status=404)
+                return JsonResponse({'error': 'Файл не найден'}, status=404)    
         return updata(request, id)
 
 @api_view(['GET'])
 @check_session
 @check_status_admin
-def get_users(_request, data):
+def get_users(_, data):
     # получение списка пользователей и файлов администратором
     all_users = Users.objects.all()
     ser_users = UsersSerializer(all_users, many=True)
@@ -266,8 +287,15 @@ def change_status(request, data):
     json_body = json.loads(body_unicode)
     try:
         user = Users.objects.get(id=json_body['id'])
+        if json_body['status']:
+            user.avatar = 'avatar.svg'
+        else:
+            if user.sex == 'man':
+                user.avatar = 'avatar-man.svg'
+            else:
+                user.avatar = 'avatar-woman.svg'
         user.status_admin = json_body['status']
-        user.save(update_fields=['status_admin'])
+        user.save(update_fields=['status_admin', 'avatar'])
         return JsonResponse({'status': 'Выполнено'}, status=200)
     except ObjectDoesNotExist:
         return JsonResponse({'error': 'Пользователь не найден'}, status=404)
@@ -275,7 +303,7 @@ def change_status(request, data):
 @api_view(['DELETE'])
 @check_session
 @check_status_admin
-def delete_user(request, id, data):
+def delete_user(_, id, data):
     # удаление пользователя администратором
     try:
         Users.objects.get(pk=id).delete()
