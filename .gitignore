@@ -1,3 +1,5 @@
 __pycache__/
 venv/
 media/
+errors.log
+logs.log

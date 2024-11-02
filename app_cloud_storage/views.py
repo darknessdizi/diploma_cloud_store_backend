@@ -1,8 +1,8 @@
+import logging
 import os
 from django.utils import timezone
-from django.http import JsonResponse, HttpResponse, FileResponse
+from django.http import JsonResponse, FileResponse
 from rest_framework.response import Response
-# from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
@@ -17,8 +17,11 @@ from .models import Files, UserSession, Users
 import json
 from django.core.exceptions import ObjectDoesNotExist
 
+# from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from dotenv import load_dotenv
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -34,11 +37,12 @@ load_dotenv()
 @app_enter
 def registration_user(request):
     # регистрация пользователя
+    logger.info('Регистрация пользователя')
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
     queryset = Users.objects.filter(login=json_body['login'])
     if queryset.exists():
-        return HttpResponse(status=205)
+        return JsonResponse({'status': 'Логин занят'}, status=205)
 
     if json_body['sex'] == 'man':
         avatar_name = 'avatar-man.svg'
@@ -64,12 +68,14 @@ def registration_user(request):
     data = user.to_json()
     data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
     data['token'] = session.session_token
+    logger.info(f'Пользователю присвоен id: {data["id"]}')
     return JsonResponse(data, status=201)
 
 @api_view(['POST'])
 @app_enter
 def login_user(request):
     # вход пользователя в систему
+    logger.info('Аутентификация пользователя')
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
     queryset = Users.objects.filter(login=json_body['login'])
@@ -85,27 +91,38 @@ def login_user(request):
                 data['token'] = session.session_token
                 user.last_visit = timezone.now()
                 user.save(update_fields=['last_visit'])
+                logger.info(f'Пользователь с id: {data["id"]} успешно прошел аутентификацию')
                 return JsonResponse(data, status=200)
             except ObjectDoesNotExist:
-                return JsonResponse({'error': 'Нет данных по сессии. Обратитесь к администратору.'}, status=404)
+                logger.error(f'Отсутствуют данные сессии на пользователя с id: {data["id"]}')
+                return JsonResponse(
+                    {'error': 'Нет данных по сессии. Обратитесь к администратору.'}, status=404
+                )
         else:
-            return JsonResponse({'error': 'Вы ввели неверное имя пользователя или пароль. Попробуйте повторить ввод или нажмите на кнопку регистрация.'}, status=404)
-    else: 
-        return JsonResponse({'error': 'Вы ввели неверное имя пользователя или пароль. Попробуйте повторить ввод или нажмите на кнопку регистрация.'}, status=404)
+            logger.info(f'Пользователь с id: {user.id} ввёл не правильный пароль')
+            return JsonResponse({'error': ('Вы ввели неверное имя пользователя или пароль. '
+                'Попробуйте повторить ввод или нажмите на кнопку регистрация.')}, status=403)
+    else:
+        logger.info(f'Пользователь ввёл не существующий логин')
+        return JsonResponse({'error': ('Вы ввели неверное имя пользователя или пароль. '
+            'Попробуйте повторить ввод или нажмите на кнопку регистрация.')}, status=403)
 
 @api_view(['GET'])
 @check_session
-def logout_user(_, data):
+def logout_user(request, data):
     # выход пользователя из системы
+    logger.info('Обратная аутентификация')
     data['session'].session_token = ''
     data['session'].save()
+    logger.info(f'Пользователь с id: {data["session"].id} вышел из системы')
     return JsonResponse({'status': 'Выполнено'}, status=200)
 
 @api_view(['GET'])
 @check_session
 def get_files(_, user_id, data):
     # получение всех файлов пользователя
-    print('получение файлов', data['session'].id, user_id)
+    logger.info((f'Запрос от пользователя {data["session"].id} на получение '
+        f'файлов пользователя с id: {user_id}'))
     if (data['session'].user_id.id == user_id):
         allFiles = Files.objects.filter(user_id=data['session'].id)
     else:
@@ -113,14 +130,18 @@ def get_files(_, user_id, data):
         if statusAdmin:
             allFiles = Files.objects.filter(user_id=user_id)
         else:
+            logger.info((f'Пользователю с id: {data["session"].id} отказано в '
+                'доступе на получение файлов'))
             return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     ser = FilesSerializer(allFiles, many=True)
+    logger.info(f'Запрос от пользователя {data["session"].id} успешно обработан')
     return Response(ser.data, status=200)
 
 @api_view(['GET'])
 @check_session
 def recovery_session(_, data):
     # получение данных пользователя после перезапуска (по токену)
+    logger.info(f'Восcтановление данных пользователя с id: {data["session"].id}')
     result = data['session'].user_id.to_json()
     result['avatar'] = f"{URL_SERVER}/media/{result['avatar']}"
     result['token'] = data['session'].session_token
@@ -130,38 +151,52 @@ def recovery_session(_, data):
 @check_session
 def file_data(_, file_id, data):
     # получение данных о файле (обновление информации о файле после загрузки)
+    logger.info((f'Запрос от пользователя с id: {data["session"].id} на получение '
+        f'данных по файлу {file_id}'))
     try:
         file = Files.objects.get(pk=file_id)
         ser = FilesSerializer(file)
         if data['session'].user_id == file.user_id:
             return Response(ser.data, status=200)
         elif data['session'].user_id.status_admin:
+            logger.info(f'Запрос от пользователя с id: {data["session"].id} успешно обработан')
             return Response(ser.data, status=200)
         else:
+            logger.info((f'Запрос от пользователя с id: {data["session"].id} отклонен. '
+                'Отказано в доступе'))
             return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     except ObjectDoesNotExist:
+        logger.error((f'Запрос от пользователя с id: {data["session"].id} отклонен. '
+            'Файл не найден'))
         return JsonResponse({'error': 'Файл не найден'}, status=404)
 
 @api_view(['GET'])
 @check_session
 def get_link(_, id, data):
     # формирование и отправка ссылки для скачивания файла сторонним пользователем
+    logger.info((f'Запрос от пользователя с id: {data["session"].id} формирование '
+        f'ссылки на файл {id}'))
     try:
         file = Files.objects.get(pk=id)
         statusAdmin = data['session'].user_id.status_admin
         if (data['session'].user_id != file.user_id) and (not statusAdmin):
-            return JsonResponse({'error': 'Отказано в доступе'}, status=403) 
+            logger.info((f'Запрос от пользователя с id: {data["session"].id} отклонен. '
+                'Отказано в доступе'))
+            return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     except ObjectDoesNotExist:
+        logger.error(f'Запрос от пользователя с id: {data["session"].id} отклонен. Файл не найден')
         return JsonResponse({'error': 'Файл не найден'}, status=404)
 
     url = f"{data['session'].id}/{file.title}"
     key = os.getenv('URL_KEY')
     encrypt_url = encrypt(url, key)
+    logger.info(f'Запрос от пользователя с id: {data["session"].id} успешно обработан')
     return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
 
 @api_view(['GET'])
 def download_file(_, path):
     # скачивание файла сторонним пользователем по ссылке
+    logger.info(f'Запрос на скачивание файла сторонним пользователем по ссылке')
     try:
         key = os.getenv('URL_KEY')
         try:
@@ -177,11 +212,17 @@ def download_file(_, path):
         file.save(update_fields=['last_download'])
         response = FileResponse(file.file, as_attachment=True, filename=params[1])
         response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+        logger.info((f'Запрос на скачивание файла сторонним пользователем по '
+            'ссылке успешно обработан'))
         return response
 
     except ObjectDoesNotExist:
+        logger.error((f'Запрос на скачивание файла сторонним пользователем '
+            'по ссылке отклонен. Неверный url'))
         return JsonResponse({'error': 'Неверный url'}, status=404)
     except (Exception, ) as error:
+        logger.error((f'Запрос на скачивание файла сторонним пользователем '
+            f'по ссылке отклонен. Ошибка сервера: {error}'))
         return JsonResponse({'error': f'Ошибка сервера: {error}'}, status=500)
 
 class File(APIView):
@@ -192,6 +233,7 @@ class File(APIView):
         # загрузка файлов на сервер (одиночное или групповое)
         @check_session
         def download(req, data):
+            logger.info(f'Запрос от пользователя {data["session"].id}. Загрузка файлов на сервер')
             data_list = []
             for i in range(len(dict(req.data)['file'])):
                 obj = {}
@@ -212,6 +254,8 @@ class File(APIView):
                         'last_download': serializer.data['last_download'],
                         'user_id': serializer.data['user_id'],
                     })
+            logger.info((f'Запрос от пользователя {data["session"].id} загрузка '
+                'файлов на сервер успешно обработан'))
             return JsonResponse({'files': data_list}, status=201)
         return download(request)
 
@@ -219,16 +263,23 @@ class File(APIView):
         # отправка файла для сохранения на устройство клиента
         @check_session
         def upload(_, id, data):
+            logger.info(f'Запрос от пользователя {data["session"].id}. Скачивание файла с id: {id}')
             try:
                 queryset = Files.objects.get(pk=id)
                 statusAdmin = data['session'].user_id.status_admin
                 if ((data['session'].user_id == queryset.user_id) or (statusAdmin)):
                     queryset.last_download = timezone.now()
                     queryset.save(update_fields=['last_download'])
+                    logger.info((f'Запрос от пользователя {data["session"].id} на '
+                        'скачивание файла с id: {id} успешно обработан'))
                     return FileResponse(queryset.file, as_attachment=True)
                 else:
+                    logger.info((f'Запрос от пользователя {data["session"].id} на '
+                        f'скачивание файла с id: {id} отклонен. Отказано в доступе'))
                     return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
+                logger.error((f'Запрос от пользователя {data["session"].id} на '
+                    f'скачивание файла с id: {id} отклонен. Файл не найден'))
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return upload(request, id)
 
@@ -236,15 +287,22 @@ class File(APIView):
         # удаление файла из хранилища
         @check_session
         def remove(_, id, data):
+            logger.info(f'Запрос от пользователя {data["session"].id}. Удаление файла с id: {id}')
             try:
                 file = Files.objects.get(pk=id)
                 statusAdmin = data['session'].user_id.status_admin
                 if ((data['session'].user_id == file.user_id) or (statusAdmin)):
                     file.delete()
+                    logger.info((f'Запрос от пользователя {data["session"].id} удаление '
+                        f'файла с id: {id} успешно обработан'))
                     return Response(status=204)
                 else:
+                    logger.info((f'Запрос от пользователя {data["session"].id} удаление '
+                        f'файла с id: {id} отклонен. Отказано в доступе'))
                     return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
+                logger.error((f'Запрос от пользователя {data["session"].id} удаление '
+                    f'файла с id: {id} отклонен. Файл не найден'))
                 return JsonResponse({'error': 'Файл не найден'}, status=404)
         return remove(request, id)
 
@@ -252,6 +310,8 @@ class File(APIView):
         # редактирование файла в хранилище
         @check_session
         def updata(req, id, data):
+            logger.info((f'Запрос от пользователя {data["session"].id}. '
+                f'Редактирование файла с id: {id}'))
             try:
                 file = Files.objects.get(pk=id)
                 statusAdmin = data['session'].user_id.status_admin
@@ -260,10 +320,16 @@ class File(APIView):
                     file.comment = dict(req.data)['comment'][0]
                     file.save(update_fields=['title', 'comment',])
                     ser = FilesSerializer(file)
+                    logger.info((f'Запрос от пользователя {data["session"].id}. '
+                        f'Редактирование файла с id: {id} успешно обработан'))
                     return Response(ser.data, status=200)
                 else:
+                    logger.info((f'Запрос от пользователя {data["session"].id} редактирование '
+                        f'файла с id: {id} отклонен. Отказано в доступе'))
                     return JsonResponse({'error': 'Отказано в доступе'}, status=403)
             except ObjectDoesNotExist:
+                logger.error((f'Запрос от пользователя {data["session"].id} редактирование файла '
+                    f'с id: {id} отклонен. Файл не найден'))
                 return JsonResponse({'error': 'Файл не найден'}, status=404)    
         return updata(request, id)
 
@@ -272,10 +338,14 @@ class File(APIView):
 @check_status_admin
 def get_users(_, data):
     # получение списка пользователей и файлов администратором
+    logger.info((f'Запрос от администратора с id: {data["session"].id}. '
+        'Получение списка пользователей и файлов'))
     all_users = Users.objects.all()
     ser_users = UsersSerializer(all_users, many=True)
     all_files = Files.objects.all()
     ser_files = FilesSerializer(all_files, many=True)
+    logger.info((f'Запрос от администратора с id: {data["session"].id}. '
+        'Получение списка пользователей и файлов успешно обработан'))
     return JsonResponse({'users': ser_users.data, 'files': ser_files.data}, status=200)
 
 @api_view(['PATCH'])
@@ -283,6 +353,8 @@ def get_users(_, data):
 @check_status_admin
 def change_status(request, data):
     # изменение статуса пользователя администратором
+    logger.info((f'Запрос от администратора с id: {data["session"].id}. '
+        'Изменение статуса пользователя'))
     body_unicode = request.body.decode('utf-8')
     json_body = json.loads(body_unicode)
     try:
@@ -296,8 +368,12 @@ def change_status(request, data):
                 user.avatar = 'avatar-woman.svg'
         user.status_admin = json_body['status']
         user.save(update_fields=['status_admin', 'avatar'])
+        logger.info((f'Запрос от администратора с id: {data["session"].id}. '
+            f'Изменение статуса пользователя с id: {user.id} успешно обработан'))
         return JsonResponse({'status': 'Выполнено'}, status=200)
     except ObjectDoesNotExist:
+        logger.error((f'Запрос от администратора с id: {data["session"].id}. '
+            f'Изменение статуса пользователя с id: {user.id} отклонен. Пользователь не найден'))
         return JsonResponse({'error': 'Пользователь не найден'}, status=404)
 
 @api_view(['DELETE'])
@@ -305,8 +381,15 @@ def change_status(request, data):
 @check_status_admin
 def delete_user(_, id, data):
     # удаление пользователя администратором
+    logger.info(f'Запрос от администратора с id: {data["session"].id}. Удаление пользователя')
     try:
-        Users.objects.get(pk=id).delete()
+        user = Users.objects.get(pk=id)
+        userId = user.id
+        user.delete()
+        logger.info((f'Запрос от администратора с id: {data["session"].id} удаление пользователя. '
+            f'Пользователь id: {userId} удален'))
         return Response(status=204)
     except ObjectDoesNotExist:
+        logger.error((f'Запрос от администратора с id: {data["session"].id} удаление пользователя '
+            f'отклонен. Пользователь id: {userId} не найден'))
         return JsonResponse({'error': 'Пользователь не найден'}, status=404)

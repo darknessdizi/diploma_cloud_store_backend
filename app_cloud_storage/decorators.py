@@ -1,6 +1,9 @@
+import logging
 from django.http import JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
 from app_cloud_storage.models import UserSession
+
+logger = logging.getLogger(__name__)
 
 
 # Декоратор для входа в систему
@@ -10,6 +13,7 @@ def app_enter(func):
             response = func(*args, **kwargs)
             return response
         except (Exception, ) as error:
+            logger.error(f'Ошибка сервера: {error}')
             return JsonResponse({'error': f'Ошибка сервера: {error}'}, status=500)
     return wrapped
 
@@ -24,8 +28,10 @@ def check_session(func):
             response = func(*args, **kwargs)
             return response
         except ObjectDoesNotExist:
+            logger.error('Запрос ресурсов сервера без авторизации')
             return JsonResponse({'error': 'Вы не авторизованы'}, status=401)
         except (Exception, ) as error:
+            logger.error(f'Ошибка сервера: {error}')
             return JsonResponse({'error': f'Ошибка сервера: {error}'}, status=500)
     return wrapped
 
@@ -40,5 +46,6 @@ def check_status_admin(func):
             else:
                 raise ObjectDoesNotExist
         except ObjectDoesNotExist:
+            logger.error(f'Пользователь с id: {user.id} запрашивает недоступный ресурс')
             return JsonResponse({'error': 'Нет доступа к указанному ресурсу'}, status=403)
     return wrapped
