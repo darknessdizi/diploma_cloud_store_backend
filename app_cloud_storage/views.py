@@ -396,3 +396,4 @@ def delete_user(_, id, data):
         logger.error((f'Запрос от администратора с id: {data["session"].id} удаление пользователя '
             f'отклонен. Пользователь id: {userId} не найден'))
         return JsonResponse({'error': 'Пользователь не найден'}, status=404)
+        
