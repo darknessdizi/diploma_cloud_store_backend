@@ -1,5 +1,5 @@
 __pycache__/
 venv/
-media/
+user_files
 errors.log
 logs.log

@@ -70,4 +70,5 @@ class UserSession(models.Model):
 
     def __str__(self):
         return f'Сессия для {self.user_id.login}'
+        
 

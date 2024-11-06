@@ -1,5 +1,7 @@
-import logging
 import os
+import secrets
+import logging
+import json
 from django.utils import timezone
 from django.http import JsonResponse, FileResponse
 from rest_framework.response import Response
@@ -8,13 +10,11 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from cryptography.fernet import Fernet
 from .crypto import encrypt, decrypt
-import secrets
 
 from app_cloud_storage.const import URL_SERVER
 from app_cloud_storage.serializers import FilesSerializer, UsersSerializer
 from .decorators import app_enter, check_session, check_status_admin
 from .models import Files, UserSession, Users
-import json
 from django.core.exceptions import ObjectDoesNotExist
 
 # from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
@@ -42,6 +42,7 @@ def registration_user(request):
     json_body = json.loads(body_unicode)
     queryset = Users.objects.filter(login=json_body['login'])
     if queryset.exists():
+        logger.info(f'Отказ регистрации. Логин "{json_body["login"]}" уже существует')
         return JsonResponse({'status': 'Логин занят'}, status=205)
 
     if json_body['sex'] == 'man':
@@ -68,7 +69,7 @@ def registration_user(request):
     data = user.to_json()
     data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
     data['token'] = session.session_token
-    logger.info(f'Пользователю присвоен id: {data["id"]}')
+    logger.info(f'Пользователю "{json_body["login"]}" присвоен id: {data["id"]}')
     return JsonResponse(data, status=201)
 
 @api_view(['POST'])
@@ -134,7 +135,8 @@ def get_files(_, user_id, data):
                 'доступе на получение файлов'))
             return JsonResponse({'error': 'Отказано в доступе'}, status=403)
     ser = FilesSerializer(allFiles, many=True)
-    logger.info(f'Запрос от пользователя {data["session"].id} успешно обработан')
+    logger.info(f'Запрос от пользователя {data["session"].id} на получение '
+        'файлов успешно обработан')
     return Response(ser.data, status=200)
 
 @api_view(['GET'])
@@ -152,7 +154,7 @@ def recovery_session(_, data):
 def file_data(_, file_id, data):
     # получение данных о файле (обновление информации о файле после загрузки)
     logger.info((f'Запрос от пользователя с id: {data["session"].id} на получение '
-        f'данных по файлу {file_id}'))
+        f'данных файла {file_id}'))
     try:
         file = Files.objects.get(pk=file_id)
         ser = FilesSerializer(file)
@@ -190,7 +192,8 @@ def get_link(_, id, data):
     url = f"{data['session'].id}/{file.title}"
     key = os.getenv('URL_KEY')
     encrypt_url = encrypt(url, key)
-    logger.info(f'Запрос от пользователя с id: {data["session"].id} успешно обработан')
+    logger.info(f'Запрос от пользователя с id: {data["session"].id} формирование '
+        'ссылки успешно обработан')
     return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
 
 @api_view(['GET'])
@@ -271,7 +274,7 @@ class File(APIView):
                     queryset.last_download = timezone.now()
                     queryset.save(update_fields=['last_download'])
                     logger.info((f'Запрос от пользователя {data["session"].id} на '
-                        'скачивание файла с id: {id} успешно обработан'))
+                        f'скачивание файла с id: {id} успешно обработан'))
                     return FileResponse(queryset.file, as_attachment=True)
                 else:
                     logger.info((f'Запрос от пользователя {data["session"].id} на '

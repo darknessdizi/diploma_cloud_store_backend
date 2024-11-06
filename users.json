@@ -5,6 +5,7 @@
     "fields": {
       "login": "admin",
       "password": "gAAAAABnCrcuqfFGxUtbsHUPHx0vRJLS4XlAXfX6MKt1UDZYyUPl7puAxMjRWvxT54VBT1NrzNbNXKaYKnxPrUpXFtHMrex2-g==", // пароль 12QWer+
+      "full_name": "Сергей Петрович",
       "status_admin": true,
       "sex": "man",
       "avatar": "avatar.svg",
