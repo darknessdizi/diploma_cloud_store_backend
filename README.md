@@ -209,23 +209,7 @@ python manage.py migrate
 
 ![migrate](/pic/migrate.png)
 
-19. Добавьте пользовательские модели для базы данных:
-```bash
-python manage.py makemigrations
-```
-- *Пример:*
-
-![makemigrations](/pic/migration.png)
-
-20. Повторите миграцию для базы данных:
-```bash
-python manage.py migrate
-```
-- *Пример:*
-
-![migrate](/pic/second-migrate.png)
-
-21. Добавьте первого пользователя в базу данных (он же будет администратором) из файла users.json:
+19.  Добавьте первого пользователя в базу данных (он же будет администратором) из файла users.json:
 ```bash
 python manage.py loaddata users.json
 ```
@@ -233,7 +217,7 @@ python manage.py loaddata users.json
 
 ![loaddata](/pic/load.png)
 
-22. Настройте gunicorn. Выполните следующие действия:
+20. Настройте gunicorn. Выполните следующие действия:
     1. Создайте файл `gunicorn.service`, введите команду:
     ```bash
     sudo nano /etc/systemd/system/gunicorn.service
@@ -254,7 +238,7 @@ python manage.py loaddata users.json
     User=dima
     Group=www-data
     WorkingDirectory=/home/dima/backend
-    ExecStart=/home/dima/backend/project_cloud_storage/venv/bin/gunicorn --access-logfile -\
+    ExecStart=/home/dima/backend/venv/bin/gunicorn --access-logfile -\
         --workers=3 \
         --bind unix:/home/dima/backend/project_cloud_storage/project.sock project_cloud_storage.wsgi:application
 
@@ -266,7 +250,7 @@ python manage.py loaddata users.json
 
     ![gunicorn настройки](/pic/nano-full.png)
 
-    1.  Запустите gunicorn введя команду:
+    3.  Запустите gunicorn введя команду:
     ```bash
     sudo systemctl start gunicorn
     ```
@@ -294,7 +278,15 @@ python manage.py loaddata users.json
     ![Статус gunicorn](/pic/status-gunicorn.png)
     Настройка gunicorn на этом завершена.
 
-23. Скопируйте репозиторий для клиентской части в корень вашего сервера:
+21. Выйти из папки backend, введите команду:
+```bash
+cd ..
+```
+- *Пример:*
+
+![Выход из папки](/pic/exit-backend.png)
+
+22. Скопируйте репозиторий для клиентской части в корень вашего сервера:
 ```bash
 git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
 ```
@@ -302,7 +294,7 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
 
 ![Копирование fronted](/pic/clone-fronted.png)
 
-24. Настройте nginx. Выполните следующие действия:  
+23. Настройте nginx. Выполните следующие действия:  
     1. Создать новый файл конфигурации:
     ```bash
     sudo nano /etc/nginx/sites-available/cloud-storage
