@@ -324,20 +324,12 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
     sudo ln -s /etc/nginx/sites-available/cloud-storage /etc/nginx/sites-enabled
     ```
 
-    4. Также вы можете настроить максимальный размер файла для загрузки:
-    ```bash
-    sudo nano /etc/nginx/nginx.conf
-    ```
-    5. Добавив следующие строки в http{} (в данном примере ограничение 15мб)  
-    client_max_body_size 15M;  
-    client_body_buffer_size 15M;
-
-    6. Переопределите конфиг сервера nginx и проверьте его работоспособность:
+    4. Переопределите конфиг сервера nginx и проверьте его работоспособность:
     ```bash
     sudo systemctl reload nginx
     sudo systemctl status nginx
     ```
-    7. Логи nginx:
+    5. Логи nginx:
     ```bash
     sudo nano /var/log/nginx/access.log
     sudo nano /var/log/nginx/error.log
