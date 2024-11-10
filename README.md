@@ -157,7 +157,7 @@ sudo systemctl start postgresql
 
       ![Выход](/pic/exit-q.png)
 
-      6.  Выйти из пользователя postgres, командой:
+      6.  Выйти из пользователя postgres командой:
       ```bash
       exit
       ```
@@ -165,7 +165,7 @@ sudo systemctl start postgresql
 
       ![Выход](/pic/exit-postgres.png)
 
-13. Скопируйте репозиторий с проектом для сервера в корень сервера:
+13. Скопируйте репозиторий с проектом для сервера:
 ```bash
 git clone https://github.com/darknessdizi/diploma_cloud_store_backend.git backend
 ```
@@ -278,7 +278,15 @@ python manage.py loaddata users.json
     ![Статус gunicorn](/pic/status-gunicorn.png)
     Настройка gunicorn на этом завершена.
 
-21. Выйти из папки backend, введите команду:
+21. Запустите сервер, введите команду:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+- *Пример:*
+
+![Запуск сервера](/pic/run-server.png)
+
+22. Выйти из папки backend, введите команду:
 ```bash
 cd ..
 ```
@@ -286,7 +294,7 @@ cd ..
 
 ![Выход из папки](/pic/exit-backend.png)
 
-22. Скопируйте репозиторий для клиентской части в корень вашего сервера:
+23. Скопируйте репозиторий для клиентской части в корень вашего сервера:
 ```bash
 git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
 ```
@@ -294,7 +302,7 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
 
 ![Копирование fronted](/pic/clone-fronted.png)
 
-23. Настройте nginx. Выполните следующие действия:  
+24. Настройте nginx. Выполните следующие действия:  
     1. Создать новый файл конфигурации:
     ```bash
     sudo nano /etc/nginx/sites-available/cloud-storage
@@ -335,36 +343,3 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
     sudo nano /var/log/nginx/error.log
     ```
 ### Настройка проекта завершена.
-
-```bash
-sudo ufw allow 'Nginx Full'
-```
-
-location / {
-        root /home/dima/frontend/dist;
-        autoindex on;
-        autoindex_exact_size on;
-    }
-
-sudo systemctl enable nginx
-    sudo chown -R www-data:dima /home/dima/fronted/dist
-    sudo chmod 777 dist
-    groups dima
-    ps -eo user,comm | grep nginx
-    sudo usermod -a -G dima www-data - возможно вот эта помогла
-
-```bash
-server {
-    listen 80;
-    server_name 91.197.96.56;
-    root /home/dima/frontend/dist;
-
-#    location /login {
-#        alias /home/dima/frontend/dist;
-#    }
-
-    location ~ /[a-zA-Z]+ {
-        alias /home/dima/frontend/dist;
-    }
-}
-```

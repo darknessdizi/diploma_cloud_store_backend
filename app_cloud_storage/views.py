@@ -194,7 +194,7 @@ def get_link(_, id, data):
     encrypt_url = encrypt(url, key)
     logger.info(f'Запрос от пользователя с id: {data["session"].id} формирование '
         'ссылки успешно обработан')
-    return JsonResponse({'url': f'{URL_SERVER}/download/{encrypt_url}'}, status=200)
+    return JsonResponse({'url': f'{URL_SERVER}/api/download/{encrypt_url}'}, status=200)
 
 @api_view(['GET'])
 def download_file(_, path):
