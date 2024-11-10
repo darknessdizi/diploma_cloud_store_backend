@@ -1,10 +1,6 @@
 Дипломная работа для fullstack-разработчика - облачное хранилище
 ===
 
-## Backend
-
-*Ссылка на git-hub репозиторий (backend):* https://github.com/darknessdizi/diploma_cloud_store_backend.git
-
 ## Fronted
 
 Чтобы просмотреть работу клиентской части перейдите по ссылке ниже.
@@ -13,7 +9,10 @@
 
 *Ссылка на git-hub репозиторий (fronted):* https://github.com/darknessdizi/diploma_cloud_store.git
 
-## Инструкция по развертыванию проекта на сервере Linux Ubuntu
+
+## Backend
+
+### Инструкция по развертыванию проекта на сервере Linux Ubuntu
 
 1. Для подключения к серверу через терминал необходимо сгенерировать ключ SSH. Для генерации ключа SSH в вашем терминале (в командной строке) введите команду:
 ```bash
@@ -165,7 +164,15 @@ sudo systemctl start postgresql
 
       ![Выход](/pic/exit-postgres.png)
 
-13. Скопируйте репозиторий с проектом для сервера:
+13. Скопируйте репозиторий для клиентской части в корень вашего проекта:
+```bash
+git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
+```
+- *Пример:*
+
+![Копирование fronted](/pic/clone-fronted.png)
+
+14. Скопируйте репозиторий для серверной части в корень вашего проекта:
 ```bash
 git clone https://github.com/darknessdizi/diploma_cloud_store_backend.git backend
 ```
@@ -175,17 +182,17 @@ git clone https://github.com/darknessdizi/diploma_cloud_store_backend.git backen
 
 После копирования проекта с помощью `git clone` (пункт 1 на рисунке) на сервере появится папка `backend` с проектом (пункт 2 на рисунке). Список папок можно получить командой `ls`, `ls -A` или `ls --all`
 
-14. Перейти в появившуюся папку `backend`:
+15. Перейти в появившуюся папку `backend`:
 ```bash
 cd backend/
 ```
 
-15.  Запустите виртуальное окружение для python:
+16. Запустите виртуальное окружение для python:
 ```bash
 python3 -m venv venv
 ```
 
-16. Активируйте виртуальное окружение python:
+17. Активируйте виртуальное окружение python:
 ```bash
 source venv/bin/activate
 ```
@@ -193,7 +200,7 @@ source venv/bin/activate
 
 ![Виртуальное окружение](/pic/activate.png)
 
-17. Установите зависимости проекта из файла requirements.txt:
+18. Установите зависимости проекта из файла requirements.txt:
 ```bash
 pip install -r requirements.txt
 ```
@@ -201,7 +208,7 @@ pip install -r requirements.txt
 
 ![PIP](/pic/pip.png)
 
-18. Сделайте миграции для базы данных:
+19. Сделайте миграции для базы данных:
 ```bash
 python manage.py migrate
 ```
@@ -209,7 +216,7 @@ python manage.py migrate
 
 ![migrate](/pic/migrate.png)
 
-19.  Добавьте первого пользователя в базу данных (он же будет администратором) из файла users.json:
+20. Добавьте первого пользователя в базу данных (он же будет администратором) из файла users.json:
 ```bash
 python manage.py loaddata users.json
 ```
@@ -217,7 +224,7 @@ python manage.py loaddata users.json
 
 ![loaddata](/pic/load.png)
 
-20. Настройте gunicorn. Выполните следующие действия:
+21. Настройте gunicorn. Выполните следующие действия:
     1. Создайте файл `gunicorn.service`, введите команду:
     ```bash
     sudo nano /etc/systemd/system/gunicorn.service
@@ -278,52 +285,51 @@ python manage.py loaddata users.json
     ![Статус gunicorn](/pic/status-gunicorn.png)
     Настройка gunicorn на этом завершена.
 
-21. Запустите сервер, введите команду:
-```bash
-python manage.py runserver 0.0.0.0:8000
-```
-- *Пример:*
-
-![Запуск сервера](/pic/run-server.png)
-
-22. Выйти из папки backend, введите команду:
-```bash
-cd ..
-```
-- *Пример:*
-
-![Выход из папки](/pic/exit-backend.png)
-
-23. Скопируйте репозиторий для клиентской части в корень вашего сервера:
-```bash
-git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
-```
-- *Пример:*
-
-![Копирование fronted](/pic/clone-fronted.png)
-
-24. Настройте nginx. Выполните следующие действия:  
+22. Настройте nginx. Выполните следующие действия:  
     1. Создать новый файл конфигурации:
     ```bash
     sudo nano /etc/nginx/sites-available/cloud-storage
     ```
     - Данная команда создаст файл `cloud-storage` и откроет его в редакторе nano (На начальном этапе файл будет пустым).
 
-    2. Впишите следующий код, замените имя пользователя системы и ip сервера:
+    2. Впишите следующий код, замените имя пользователя системы и ip адрес сервера:
     ```bash
     server {
-        listen 80;
-        server_name 91.197.96.56;
-        root /home/dima/fronted/dist;
+      listen 80;
+      server_name 91.197.96.56;
+      root /home/dima/frontend/dist;
 
-        location /media/ {
-            alias /home/dima/backend/project_cloud_storage/media/;
-            default_type "image/jpg";
-        }
-        location / {
-            include proxy_params;
-            proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
-        }
+      location /login {
+          alias /home/dima/frontend/dist;
+      }
+
+      location /registration {
+          alias /home/dima/frontend/dist;
+      }
+
+      location /disk {
+          alias /home/dima/frontend/dist;
+      }
+
+      location /media/ {
+          alias /home/dima/backend/project_cloud_storage/media/;
+          default_type "image/jpg";
+      }
+
+      location /api/ {
+          include proxy_params;
+          proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
+      }
+
+      location /admin/ {
+          include proxy_params;
+          proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
+      }
+
+      location /superadmin {
+          include proxy_params;
+          proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
+      }
     }
     ```
 
@@ -337,9 +343,19 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
     sudo systemctl reload nginx
     sudo systemctl status nginx
     ```
-    5. Логи nginx:
+    5. Просмотреть логи nginx можно командами:
     ```bash
     sudo nano /var/log/nginx/access.log
     sudo nano /var/log/nginx/error.log
     ```
 ### Настройка проекта завершена.
+
+## Запустите сервер!
+
+23.  Запустите сервер, введите команду:
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+- *Пример:*
+
+![Запуск сервера](/pic/run-server.png)

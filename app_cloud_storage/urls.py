@@ -4,7 +4,6 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    # path('csrf/', get_csrf, name='csrf'),
     path('api/registration/', registration_user, name='registration'),
     path('api/login/', login_user, name='login'),
     path('api/logout/', logout_user, name='logout'),
