@@ -172,6 +172,7 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
 
 ![Копирование fronted](/pic/clone-fronted.png)
 
+
 14. Скопируйте репозиторий для серверной части в корень вашего проекта:
 ```bash
 git clone https://github.com/darknessdizi/diploma_cloud_store_backend.git backend
@@ -180,19 +181,21 @@ git clone https://github.com/darknessdizi/diploma_cloud_store_backend.git backen
 
 ![Копирование репозитория](/pic/clone.png)
 
+**Важно!** На текущий момент backend настроен для работы с IP адресом 91.197.96.56. Если требуется другой адрес, в файле `.env` (находится в корне проекта backend) необходимо изменить значение константы `URL_SERVER` на нужный IP адрес.
+
 После копирования проекта с помощью `git clone` (пункт 1 на рисунке) на сервере появится папка `backend` с проектом (пункт 2 на рисунке). Список папок можно получить командой `ls`, `ls -A` или `ls --all`
 
-15. Перейти в появившуюся папку `backend`:
+15.  Перейти в появившуюся папку `backend`:
 ```bash
 cd backend/
 ```
 
-16. Запустите виртуальное окружение для python:
+16.  Запустите виртуальное окружение для python:
 ```bash
 python3 -m venv venv
 ```
 
-17. Активируйте виртуальное окружение python:
+17.  Активируйте виртуальное окружение python:
 ```bash
 source venv/bin/activate
 ```
@@ -299,16 +302,8 @@ python manage.py loaddata users.json
       server_name 91.197.96.56;
       root /home/dima/frontend/dist;
 
-      location /login {
-          alias /home/dima/frontend/dist;
-      }
-
-      location /registration {
-          alias /home/dima/frontend/dist;
-      }
-
-      location /disk {
-          alias /home/dima/frontend/dist;
+      location / {
+          try_files $uri /index.html =404;
       }
 
       location /media/ {
@@ -322,11 +317,6 @@ python manage.py loaddata users.json
       }
 
       location /admin/ {
-          include proxy_params;
-          proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
-      }
-
-      location /superadmin {
           include proxy_params;
           proxy_pass http://unix:/home/dima/backend/project_cloud_storage/project.sock;
       }

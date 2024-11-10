@@ -49,16 +49,20 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # для настройки CORS запросов
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    'corsheaders.middleware.CorsMiddleware', # для настройки CORS запросов
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True # Разрешен доступ всем подключениям
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://91.197.96.56:8000',
+]
+
+CORS_URLS_REGEX = r"^/(api|admin)/.*$"
 
 ROOT_URLCONF = 'project_cloud_storage.urls'
 

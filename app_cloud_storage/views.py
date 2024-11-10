@@ -11,7 +11,6 @@ from rest_framework.views import APIView
 from cryptography.fernet import Fernet
 from .crypto import encrypt, decrypt
 
-from app_cloud_storage.const import URL_SERVER
 from app_cloud_storage.serializers import FilesSerializer, UsersSerializer
 from .decorators import app_enter, check_session, check_status_admin
 from .models import Files, UserSession, Users
@@ -22,6 +21,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+URL_SERVER = os.getenv('URL_SERVER')
 
 # Create your views here.
 
