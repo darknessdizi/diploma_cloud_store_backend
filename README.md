@@ -288,7 +288,7 @@ cd ..
 
 22. Скопируйте репозиторий для клиентской части в корень вашего сервера:
 ```bash
-git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
+git clone https://github.com/darknessdizi/diploma_cloud_store.git frontend
 ```
 - *Пример:*
 
@@ -306,7 +306,7 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
     server {
         listen 80;
         server_name 91.197.96.56;
-        root /home/dima/frontend/dist;
+        root /home/dima/fronted/dist;
 
         location /media/ {
             alias /home/dima/backend/project_cloud_storage/media/;
@@ -335,3 +335,36 @@ git clone https://github.com/darknessdizi/diploma_cloud_store.git fronted
     sudo nano /var/log/nginx/error.log
     ```
 ### Настройка проекта завершена.
+
+```bash
+sudo ufw allow 'Nginx Full'
+```
+
+location / {
+        root /home/dima/frontend/dist;
+        autoindex on;
+        autoindex_exact_size on;
+    }
+
+sudo systemctl enable nginx
+    sudo chown -R www-data:dima /home/dima/fronted/dist
+    sudo chmod 777 dist
+    groups dima
+    ps -eo user,comm | grep nginx
+    sudo usermod -a -G dima www-data - возможно вот эта помогла
+
+```bash
+server {
+    listen 80;
+    server_name 91.197.96.56;
+    root /home/dima/frontend/dist;
+
+#    location /login {
+#        alias /home/dima/frontend/dist;
+#    }
+
+    location ~ /[a-zA-Z]+ {
+        alias /home/dima/frontend/dist;
+    }
+}
+```
