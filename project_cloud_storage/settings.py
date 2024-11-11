@@ -59,7 +59,7 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
-    'http://91.197.96.56:8000',
+    'http://91.197.96.56',
 ]
 
 CORS_URLS_REGEX = r"^/(api|admin)/.*$"

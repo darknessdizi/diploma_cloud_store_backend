@@ -342,7 +342,7 @@ python manage.py loaddata users.json
 
 ## Запустите сервер!
 
-23.  Запустите сервер, введите команду:
+23.  Для запуска сервера, введите команду:
 ```bash
 python manage.py runserver 0.0.0.0:8000
 ```
