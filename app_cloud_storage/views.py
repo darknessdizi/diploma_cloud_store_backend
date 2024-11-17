@@ -3,7 +3,7 @@ import secrets
 import logging
 import json
 from django.utils import timezone
-from django.http import JsonResponse, FileResponse
+from django.http import JsonResponse, FileResponse, HttpResponse
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -69,9 +69,10 @@ def registration_user(request):
 
     data = user.to_json()
     data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
-    data['token'] = session.session_token
+    response = JsonResponse(data, status=201)
+    response.set_cookie(key='token', value=session.session_token, httponly=True)
     logger.info(f'Пользователю "{json_body["login"]}" присвоен id: {data["id"]}')
-    return JsonResponse(data, status=201)
+    return response
 
 @api_view(['POST'])
 @app_enter
@@ -90,11 +91,12 @@ def login_user(request):
                 session = UserSession.objects.get(user_id=user.id)
                 session.session_token = secrets.token_hex(16)
                 session.save()
-                data['token'] = session.session_token
                 user.last_visit = timezone.now()
                 user.save(update_fields=['last_visit'])
+                response = JsonResponse(data, status=200)
+                response.set_cookie(key='token', value=session.session_token, httponly=True)
                 logger.info(f'Пользователь с id: {data["id"]} успешно прошел аутентификацию')
-                return JsonResponse(data, status=200)
+                return response
             except ObjectDoesNotExist:
                 logger.error(f'Отсутствуют данные сессии на пользователя с id: {data["id"]}')
                 return JsonResponse(
@@ -111,7 +113,7 @@ def login_user(request):
 
 @api_view(['GET'])
 @check_session
-def logout_user(request, data):
+def logout_user(_, data):
     # выход пользователя из системы
     logger.info('Обратная аутентификация')
     data['session'].session_token = ''
@@ -141,14 +143,25 @@ def get_files(_, user_id, data):
     return Response(ser.data, status=200)
 
 @api_view(['GET'])
-@check_session
-def recovery_session(_, data):
+def recovery_session(request):
     # получение данных пользователя после перезапуска (по токену)
-    logger.info(f'Восcтановление данных пользователя с id: {data["session"].id}')
-    result = data['session'].user_id.to_json()
-    result['avatar'] = f"{URL_SERVER}/media/{result['avatar']}"
-    result['token'] = data['session'].session_token
-    return Response(result, status=200)
+    logger.info(f'Восcтановление данных пользователя после перезапуска страницы')
+    token = request.COOKIES.get("token")
+    if token:
+        try:
+            session = UserSession.objects.get(session_token=token)
+            data = session.user_id.to_json()
+            data['avatar'] = f"{URL_SERVER}/media/{data['avatar']}"
+            response = JsonResponse(data, status=200)
+            response.set_cookie(key='token', value=session.session_token, httponly=True)
+            logger.info(f'Пользователь с id: {session.user_id.id} восстановил соединение')
+            return response
+        except ObjectDoesNotExist:
+            logger.info(f'Пользователь не авторизован')
+            return JsonResponse({'status': 'Нет данных'}, status=205)
+    else:
+        logger.info(f'Пользователь не авторизован')
+        return JsonResponse({'status': 'Нет данных'}, status=205)
     
 @api_view(['GET'])
 @check_session

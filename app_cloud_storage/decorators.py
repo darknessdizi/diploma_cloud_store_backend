@@ -21,9 +21,10 @@ def app_enter(func):
 def check_session(func):
     def wrapped(*args, **kwargs):
         try:
-            if 'Authorization' not in [*args][0].headers:
+            token = [*args][0].COOKIES["token"]
+            if not token:
                 raise ObjectDoesNotExist
-            session = UserSession.objects.get(session_token=[*args][0].headers['Authorization'])
+            session = UserSession.objects.get(session_token=token)
             kwargs['data'] = { 'session': session }
             response = func(*args, **kwargs)
             return response

@@ -62,6 +62,13 @@ CORS_ALLOWED_ORIGINS = [
     'http://91.197.96.56',
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:5173',
+    'http://91.197.96.56',
+]
+
 CORS_URLS_REGEX = r"^/(api|admin)/.*$"
 
 ROOT_URLCONF = 'project_cloud_storage.urls'
