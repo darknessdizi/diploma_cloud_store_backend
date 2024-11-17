@@ -36,12 +36,12 @@ class Users(models.Model):
         return {
             'id': self.id,
             'login': self.login,
-            'full_name': self.full_name,
+            'fullName': self.full_name,
             'email': self.email,
             'avatar': self.avatar,
-            'status_admin': self.status_admin,
+            'statusAdmin': self.status_admin,
             'created': self.created,
-            'last_visit': self.last_visit,
+            'lastVisit': self.last_visit,
         }
 
 class Files(models.Model):
@@ -58,6 +58,18 @@ class Files(models.Model):
         verbose_name = 'Файл пользователя'
         verbose_name_plural = 'Файлы пользователей'
         ordering = ["created"]
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'created': self.created,
+            'lastDownload': self.last_download,
+            'size': self.size,
+            'file': self.file,
+            'userId': self.user_id.id,
+            'comment': self.comment,
+        }
 
 class UserSession(models.Model):
     session_token = models.CharField(max_length=100, default='')

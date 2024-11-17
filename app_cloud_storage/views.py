@@ -137,10 +137,14 @@ def get_files(_, user_id, data):
             logger.info((f'Пользователю с id: {data["session"].id} отказано в '
                 'доступе на получение файлов'))
             return JsonResponse({'error': 'Отказано в доступе'}, status=403)
-    ser = FilesSerializer(allFiles, many=True)
+    files = []
+    for file in allFiles:
+        item = file.to_json()
+        del item['file']
+        files.append(item)
     logger.info(f'Запрос от пользователя {data["session"].id} на получение '
         'файлов успешно обработан')
-    return Response(ser.data, status=200)
+    return Response(files, status=200)
 
 @api_view(['GET'])
 def recovery_session(request):
@@ -268,8 +272,8 @@ class File(APIView):
                         'comment': serializer.data['comment'],
                         'size': serializer.data['size'],
                         'created': serializer.data['created'],
-                        'last_download': serializer.data['last_download'],
-                        'user_id': serializer.data['user_id'],
+                        'lastDownload': serializer.data['last_download'],
+                        'userId': serializer.data['user_id'],
                     })
             logger.info((f'Запрос от пользователя {data["session"].id} загрузка '
                 'файлов на сервер успешно обработан'))
@@ -357,13 +361,24 @@ def get_users(_, data):
     # получение списка пользователей и файлов администратором
     logger.info((f'Запрос от администратора с id: {data["session"].id}. '
         'Получение списка пользователей и файлов'))
+
     all_users = Users.objects.all()
-    ser_users = UsersSerializer(all_users, many=True)
+    users = []
+    for user in all_users:
+        item = user.to_json()
+        del item['avatar']
+        users.append(item)
+
+    files = []
     all_files = Files.objects.all()
-    ser_files = FilesSerializer(all_files, many=True)
+    for file in all_files:
+        item = file.to_json()
+        del item['file']
+        files.append(item)
+
     logger.info((f'Запрос от администратора с id: {data["session"].id}. '
         'Получение списка пользователей и файлов успешно обработан'))
-    return JsonResponse({'users': ser_users.data, 'files': ser_files.data}, status=200)
+    return JsonResponse({'users': users, 'files': files}, status=200)
 
 @api_view(['PATCH'])
 @check_session

@@ -21,7 +21,7 @@ def app_enter(func):
 def check_session(func):
     def wrapped(*args, **kwargs):
         try:
-            token = [*args][0].COOKIES["token"]
+            token = [*args][0].COOKIES.get('token')
             if not token:
                 raise ObjectDoesNotExist
             session = UserSession.objects.get(session_token=token)
